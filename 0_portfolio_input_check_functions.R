@@ -925,7 +925,7 @@ get_and_clean_fin_data <- function(fund_data){
   # Checks to ensure all finds are classified as such
   fin_data <- classify_all_funds(fin_data)
   
-  # fin_data <- add_bics_sector(fin_data)
+  fin_data <- add_bics_sector(fin_data)
   
   # Select relevant columns
   fin_data <- fin_data %>%
@@ -935,7 +935,7 @@ get_and_clean_fin_data <- function(fund_data){
       isin,
       unit_share_price, exchange_rate_usd,
       asset_type, security_type,
-      security_mapped_sector, security_icb_subsector, security_bics_subgroup, # bclass4,
+      security_mapped_sector, security_icb_subsector, security_bics_subgroup, bics_sector, # bclass4,
       maturity_date, coupon_value, amount_issued, current_shares_outstanding_all_classes, unit_share_price,
       sector_override,
       is_sb
@@ -955,12 +955,12 @@ get_and_clean_fin_data <- function(fund_data){
 }
 
 add_bics_sector <- function(fin_data){
-  
+
   bics_bridge <- read_csv("data/bics_bridge.csv")
-  
-  fin_data_ <- left_join(fin_data, bics_bridge, by = c("security_bics_subgroup" = "bics_subsector"))
-  
-  
+
+  fin_data_ <- left_join(fin_data, bics_bridge, by = c("security_bics_subgroup" = "bics_subgroup"))
+
+
 }
 
 get_and_clean_revenue_data <- function(){
@@ -1141,7 +1141,7 @@ create_portfolio_subset <- function(portfolio, portfolio_type, relevant_fin_data
     portfolio_subset <- portfolio_subset %>% 
       select(all_of(grouping_variables), holding_id, value_usd, number_of_shares, 
              company_id, company_name, id, id_name, country_of_domicile, unit_share_price, current_shares_outstanding_all_classes,
-             financial_sector, has_ald_in_fin_sector)
+             financial_sector, has_ald_in_fin_sector, bics_sector)
     
   }else{
     print(paste0("No ",portfolio_type," in portfolio"))
@@ -1240,7 +1240,7 @@ create_audit_file <- function(portfolio_total){
   
   audit_file <- portfolio_total %>% 
     select(all_of(grouping_variables), holding_id, isin, value_usd, company_name, asset_type,  has_revenue_data, valid_input, 
-           direct_holding, security_mapped_sector, financial_sector, sectors_with_assets, has_ald_in_fin_sector,flag)
+           direct_holding, security_mapped_sector, financial_sector, bics_sector, sectors_with_assets, has_ald_in_fin_sector,flag)
   
   if(has_revenue == FALSE){audit_file <- audit_file %>% select(-has_revenue_data)}
   
@@ -1530,3 +1530,25 @@ add_other_to_sector_classifications <- function(audit){
   
   audit
 }
+
+# add_bics_sector <- function(portfolio, comp_fin_data, debt_fin_data){
+#   #join in bics sectors for EQ and CB
+#   portfolio_eq <- portfolio %>% filter(asset_type == "Equity") %>% 
+#     left_join(comp_fin_data %>% select(company_id, bics_sector), by = c("company_id"))
+#   portfolio_cb <- portfolio %>% filter(asset_type == "Bonds") %>% 
+#     left_join(debt_fin_data %>% select(corporate_bond_ticker, bics_sector), by = c("corporate_bond_ticker"))
+#   #separate out other asset_types to handle new variable
+#   portfolio_other <- portfolio %>% filter(!asset_type %in% c("Equity", "Bonds"))
+#   #if other asset_types has pos. number of entries, add bics_sector with NA value, otherwise add column name
+#   if (data_check(portfolio_other)){
+#     portfolio_other <- portfolio_other %>% mutate(bics_sector = NA_character_)
+#   }else{
+#     portfolio_other <- portfolio_other %>% add_column("bics_sector")
+#     
+#   }
+#   #bind the diff asset types back together
+#   portfolio <- rbind(portfolio_eq, portfolio_cb, portfolio_other)
+#   
+#   return(portfolio)
+#   
+# }
