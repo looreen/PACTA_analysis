@@ -1,8 +1,11 @@
 ---
 title: "PACTA Analysis - Input Data QA"
-author: "Jacob Kastl"
 date: "`r format(Sys.time(), '%B %Y')`"
-mainfont: GT America
+params: 
+  project_code: general
+  project_location_ext: NULL
+  twodii_internal: TRUE
+  project_name: NULL
 output:
   html_document:
     fig_caption: yes
@@ -18,7 +21,14 @@ knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
 library(DT)
 
-source("1_portfolio_check_initialisation.R")
+project_code <- params$project_code
+project_location_ext <- params$project_location_ext
+twodii_internal <- params$twodii_internal
+project_name <- params$project_name
+
+create_project_folder(project_name, twodii_internal, project_location_ext)
+set_project_paths(project_name, twodii_internal, project_location_ext)
+
 ```
 
 ## Use case
@@ -31,12 +41,10 @@ For the analysis to be run, the *processed portfolio inputs* as well as the *com
 
 ```{r}
 # read in if report has been run successfully, but data is not currently in the workspace
-
 # availability checks
 bonds_available <- c("Bonds_results_company.rda") %in% list.files(results_path)
 equity_available <- c("Equity_results_company.rda") %in% list.files(results_path)
 portfolio_available <- c(paste0(project_name, "_total_portfolio.rda")) %in% list.files(paste0(proc_input_path, "/"))
-
 # data paths
 # inconsisten directory with the check (Meta Investor sub dir)
 portfolio_path <- paste0(project_location,"/30_Processed_Inputs/",project_name,"_total_portfolio.rda")
@@ -57,8 +65,6 @@ if (all(bonds_available, equity_available, portfolio_available)) {
 } else {
   print("Could not find the required files to generate data QA html document in the project directory. Skipping!")
 }
-
-
 ```
 
 ## Overview
@@ -172,7 +178,6 @@ currency_overview <- result_data_qa %>%
   ungroup() %>% 
   mutate(weight_currency = round(value_usd_by_currency/sum(value_usd_by_currency, na.rm = T),3))
 datatable(currency_overview, caption = "Aggregate value USD grouped by currencies and missing currency information")
-
 ```
 
 Overview of currencies by their different exchange rates (may be due to holding information from different days?).
@@ -188,7 +193,6 @@ currency_exchange_rate_overview <- result_data_qa %>%
             value_usd_by_currency_exch = round(sum(value_usd, na.rm = T))) %>%
   ungroup()
 datatable(currency_exchange_rate_overview, caption = "Aggregate value USD in grouped currencies, exchange rates and missing currency information")
-
 ```
 
 This table provides an overview of holdings with missing exchange rate information.
@@ -216,7 +220,6 @@ missing_currency <- result_data_qa %>%
     ) %>% 
   mutate(share_missing_value = round(
     value_usd_miss_currency/value_usd_inv_pf, 4))
-
 ifelse(missing_currency %>% distinct(currency) %>% nrow() > 0,
        datatable(missing_currency, caption = "Missing aggregate value in USD due to lack of currency/exchange rate info across overall input by currency"),
        c("The table is omitted as there is no missing currency information in this project!")
@@ -254,7 +257,6 @@ not_in_bloomberg <- result_data_qa %>%
   select(-c(total_holdings_by_asset, total_value_by_asset)) %>% 
   arrange(desc(share_missing_value_by_asset))
 datatable(not_in_bloomberg)
-
 ```
 
 
@@ -297,7 +299,6 @@ ISIN_missing_invalid <- result_data_qa %>%
     ) %>% 
   arrange(desc(weight_missing_value), isin)
 datatable(ISIN_missing_invalid)
-
 ```
 
 ## Missing ALD
@@ -332,7 +333,6 @@ no_ALD_EQ <- result_data_qa %>%
     ) %>% 
   arrange(financial_sector)
 datatable(no_ALD_EQ, caption="Missing agg value due to lack of ALD information - Equity - sector level")
-
 no_ALD_EQ_detail <- result_data_qa %>% 
   filter(asset_type == "Equity" &
            has_asset_level_data == F &
@@ -350,7 +350,6 @@ no_ALD_EQ_detail <- result_data_qa %>%
   arrange(desc(share_total_value))
 datatable(no_ALD_EQ_detail, caption="Missing agg value due to lack of ALD information - Equity - company level")
 } else {print("No Equity data available. Skipping tables!")}
-
 ```
 
 ### Overview of Corporate Bond holdings w/o ALD
@@ -381,7 +380,6 @@ no_ALD_CB <- result_data_qa %>%
     ) %>% 
   arrange(financial_sector, desc(share_total_value))
 datatable(no_ALD_CB, caption="Missing agg value due to lack of ALD information - CBonds - sector level")
-
 no_ALD_CB_detail <- result_data_qa %>% 
   filter(asset_type == "Bonds" &
            has_asset_level_data == F &
@@ -398,7 +396,6 @@ no_ALD_CB_detail <- result_data_qa %>%
   arrange(desc(share_total_value))
 datatable(no_ALD_CB_detail, caption="Missing agg value due to lack of ALD information - CBonds - company level")
 } else {print("No Bonds data available. Skipping tables!")}
-
 ```
 
 ## Non-PACTA sector with ALD
@@ -438,7 +435,6 @@ non_pacta_ALD_EQ <- result_data_qa %>%
     ) %>% 
   arrange(sectors_with_assets)
 datatable(non_pacta_ALD_EQ, caption="ALD information matched to Other sector - Equity - sector level")
-
 non_pacta_ALD_EQ_detail <- result_data_qa %>% 
   filter(asset_type == "Equity" &
            has_asset_level_data == T &
@@ -456,7 +452,6 @@ non_pacta_ALD_EQ_detail <- result_data_qa %>%
   arrange(desc(share_total_value))
 datatable(non_pacta_ALD_EQ_detail, caption="ALD information matched to Other sector - Equity - company level")
 } else {print("No Equity data available. Skipping tables!")}
-
 ```
 
 
@@ -489,7 +484,6 @@ non_pacta_ALD_CB <- result_data_qa %>%
     ) %>% 
   arrange(sectors_with_assets)
 datatable(non_pacta_ALD_CB, caption="ALD information matched to Other sector - CBonds - sector level")
-
 non_pacta_ALD_CB_detail <- result_data_qa %>% 
   filter(asset_type == "Bonds" &
            has_asset_level_data == T &
@@ -507,7 +501,6 @@ non_pacta_ALD_CB_detail <- result_data_qa %>%
   arrange(desc(share_total_value))
 datatable(non_pacta_ALD_CB_detail, caption="ALD information matched to Other sector - CBonds - company level")
 } else {print("No Bonds data available. Skipping tables!")}
-
 ```
 
 
@@ -563,7 +556,6 @@ funds_coverage_missing_value <- result_data_qa %>%
     ) %>%  
   arrange(desc(share_missing_value_by_fund))
 datatable(funds_coverage_missing_value)
-
 ```
 
 
@@ -616,7 +608,6 @@ port_weight_eq_input <- result_data_qa %>%
   summarise(weight_value_usd = round(sum(value_usd, na.rm = T)/max(total_value_usd), 6)) %>% 
   ungroup() %>%
   arrange(financial_sector, company_name)
-
 port_weight_eq_output <- equity_results_company %>% 
   filter(investor_name == "Meta Investor" &
            portfolio_name == "Meta Portfolio" &
@@ -627,14 +618,12 @@ port_weight_eq_output <- equity_results_company %>%
   summarise(max_port_weight = round(max(port_weight), 6)) %>% 
   ungroup() %>% 
   arrange(financial_sector, company_name)
-
 port_weight_eq_comp <- port_weight_eq_input %>% 
   left_join(port_weight_eq_output, by = c("financial_sector", "company_name")) %>% 
   arrange(financial_sector, company_name) %>% 
   mutate(weight_diff = round((max_port_weight - weight_value_usd),5))
 datatable(port_weight_eq_comp)
 } else {print("No Equity data available. Skipping tables!")}
-
 ```
 
 ### Bonds
@@ -651,7 +640,6 @@ port_weight_cb_input <- result_data_qa %>%
   summarise(weight_value_usd = round(sum(value_usd, na.rm = T)/max(total_value_usd), 6)) %>% 
   ungroup() %>% 
   arrange(financial_sector, corporate_bond_ticker)
-
 port_weight_cb_output <- bonds_results_company %>% 
   filter(investor_name == "Meta Investor" &
            portfolio_name == "Meta Portfolio" &
@@ -662,7 +650,6 @@ port_weight_cb_output <- bonds_results_company %>%
   summarise(max_port_weight = round(max(port_weight), 5)) %>% 
   ungroup() %>% 
   arrange(financial_sector, id)
-
 port_weight_cb_comp <- port_weight_cb_input %>% 
   left_join(port_weight_cb_output,
             by = c("financial_sector" = "financial_sector", "corporate_bond_ticker" = "id")) %>% 
@@ -670,6 +657,4 @@ port_weight_cb_comp <- port_weight_cb_input %>%
   mutate(weight_diff = round((max_port_weight - weight_value_usd), 5))
 datatable(port_weight_cb_comp)
 } else {print("No Bonds data available. Skipping tables!")}
-
 ```
-
